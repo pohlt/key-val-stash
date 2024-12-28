@@ -40,10 +40,9 @@ impl Message {
         }
 
         let mut buf = Vec::with_capacity(MAX_MESSAGE_LENGTH);
-        let length = (3 + KEY_LENGTH + self.value.len()) as u16;
-        let mut l = length.to_be_bytes();
-        l.reverse();
-        buf.extend_from_slice(&l);
+        let length = ((3 + KEY_LENGTH + self.value.len()) as u16).to_be_bytes();
+        buf.push(length[1]);
+        buf.push(length[0]);
         buf.push(self.command.to_byte());
         buf.extend_from_slice(&self.key);
         buf.extend_from_slice(&self.value);
