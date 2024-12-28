@@ -24,39 +24,30 @@ fn from_file(filepath: &str) -> Result<Database, Box<dyn std::error::Error>> {
     file.read_to_end(&mut buf)?;
     let db: HashMap<DatabaseKey, DatabaseEntry> = serde_cbor::from_slice(&buf)?;
     println!("loaded database from {}", filepath);
-    Ok(Database { db: db })
+    Ok(Database { db })
 }
 
 impl Database {
     pub fn new(filepath: Option<&str>) -> Self {
-        let db: Database;
-        let res: Result<Database, Box<dyn std::error::Error>>;
-        if filepath.is_some() {
-            res = from_file(filepath.unwrap());
-        } else {
-            res = Err("No filename provided".into())
+        match filepath {
+            Some(file) => from_file(file).unwrap_or_else(|e| {
+                eprintln!("failed to load {}: {}", file, e);
+                Database { db: HashMap::new() }
+            }),
+            None => Database { db: HashMap::new() },
         }
-        if res.is_ok() {
-            db = res.unwrap();
-        } else {
-            db = Database { db: HashMap::new() };
-        }
-        db
     }
 
     pub fn put(&mut self, key: &DatabaseKey, value: DatabaseValue) {
-        match value.len() {
-            0 => {
-                self.db.remove(key);
-            }
-            _ => {
-                self.db.insert(*key, DatabaseEntry { value, age: 0 });
-            }
+        if value.is_empty() {
+            self.db.remove(key);
+        } else {
+            self.db.insert(*key, DatabaseEntry { value, age: 0 });
         }
     }
 
     pub fn get(&self, key: &DatabaseKey) -> Option<&DatabaseValue> {
-        return self.db.get(key).map(|entry| &entry.value);
+        self.db.get(key).map(|entry| &entry.value)
     }
 
     pub fn keep(&mut self, key: &DatabaseKey) {
@@ -67,33 +58,16 @@ impl Database {
 
     pub fn age_and_purge(&mut self) {
         println!("# entries before purge: {}", self.db.len());
-        for entry in self.db.values_mut() {
-            entry.age += 1;
-        }
+        self.db.values_mut().for_each(|entry| entry.age += 1);
         self.db.retain(|_, v| v.age <= 7);
         println!("# entries after purge: {}", self.db.len());
     }
 
     pub fn save(&self, filepath: &str) -> Result<(), Box<dyn std::error::Error>> {
         println!("saving database to {}", filepath);
-        let mut file = File::create(filepath)?;
         let serialized = serde_cbor::to_vec(&self.db)?;
+        let mut file = File::create(filepath)?;
         file.write_all(&serialized)?;
         Ok(())
     }
 }
-
-/*
-impl Default for Database {
-    fn default() -> Self {
-        Self { db: HashMap::new() }
-    }
-}
-
-impl Drop for Database {
-    fn drop(&mut self) {
-        println!("STORE");
-        let _ = self.save("database.cbor");
-    }
-}
-*/
