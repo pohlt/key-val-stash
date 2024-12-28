@@ -1,0 +1,15 @@
+[package]
+name = "key-val-stash"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_cbor = "0.11"
+ctrlc = "3.4"
+
+[profile.release]
+opt-level = 3 # optimize for size "z"
+lto = true    # enable Link Time Optimization
+#panic = "abort"     # reduce binary size by aborting on panic
+#strip = "debuginfo" # strip debug info

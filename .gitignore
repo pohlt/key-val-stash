@@ -1,0 +1,6 @@
+.*
+target/
+database.cbor
+__pycache__/
+
+!.gitignore
