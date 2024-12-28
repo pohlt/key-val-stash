@@ -25,7 +25,7 @@ client_socket.send(msg)
 response = client_socket.recv(message.MAX_MESSAGE_LENGTH)
 print(message.unpack(response))
 
-for i in range(1, 8):
+for i in range(1, 80):
     msg = message.pack(message.Command.PUT, token_bytes(32), b"msg" * i)
     client_socket.send(msg)
     response = client_socket.recv(message.MAX_MESSAGE_LENGTH)

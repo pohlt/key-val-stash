@@ -8,16 +8,21 @@ use crate::message;
 
 pub type DatabaseKey = [u8; message::KEY_LENGTH];
 pub type DatabaseValue = Vec<u8>;
+#[derive(serde::Deserialize, serde::Serialize)]
+struct DatabaseEntry {
+    value: DatabaseValue,
+    age: u8,
+}
 
 pub struct Database {
-    db: HashMap<DatabaseKey, DatabaseValue>,
+    db: HashMap<DatabaseKey, DatabaseEntry>,
 }
 
 fn from_file(filepath: &str) -> Result<Database, Box<dyn std::error::Error>> {
     let mut file = File::open(filepath)?;
     let mut buf = Vec::new();
     file.read_to_end(&mut buf)?;
-    let db: HashMap<DatabaseKey, DatabaseValue> = serde_cbor::from_slice(&buf)?;
+    let db: HashMap<DatabaseKey, DatabaseEntry> = serde_cbor::from_slice(&buf)?;
     println!("loaded database from {}", filepath);
     Ok(Database { db: db })
 }
@@ -45,13 +50,28 @@ impl Database {
                 self.db.remove(key);
             }
             _ => {
-                self.db.insert(*key, value);
+                self.db.insert(*key, DatabaseEntry { value, age: 0 });
             }
         }
     }
 
     pub fn get(&self, key: &DatabaseKey) -> Option<&DatabaseValue> {
-        return self.db.get(key);
+        return self.db.get(key).map(|entry| &entry.value);
+    }
+
+    pub fn keep(&mut self, key: &DatabaseKey) {
+        if let Some(entry) = self.db.get_mut(key) {
+            entry.age = 0;
+        }
+    }
+
+    pub fn age_and_purge(&mut self) {
+        println!("# entries before purge: {}", self.db.len());
+        for entry in self.db.values_mut() {
+            entry.age += 1;
+        }
+        self.db.retain(|_, v| v.age <= 7);
+        println!("# entries after purge: {}", self.db.len());
     }
 
     pub fn save(&self, filepath: &str) -> Result<(), Box<dyn std::error::Error>> {

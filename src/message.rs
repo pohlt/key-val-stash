@@ -9,6 +9,7 @@ pub const MIN_MESSAGE_LENGTH: usize = 3 + KEY_LENGTH;
 pub enum Command {
     Get,
     Put,
+    Keep,
     Ok,
     NOk,
 }
@@ -18,6 +19,7 @@ impl Command {
         match self {
             Command::Get => "G".as_bytes()[0],
             Command::Put => "P".as_bytes()[0],
+            Command::Keep => "K".as_bytes()[0],
             Command::Ok => "O".as_bytes()[0],
             Command::NOk => "N".as_bytes()[0],
         }
@@ -69,6 +71,7 @@ impl Message {
         let command = match buf[2] as char {
             'G' => Command::Get,
             'P' => Command::Put,
+            'K' => Command::Keep,
             'O' => Command::Ok,
             'N' => Command::NOk,
             _ => return Err("Invalid command".to_string()),

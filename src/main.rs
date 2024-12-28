@@ -9,7 +9,7 @@ use std::{
         atomic::{AtomicBool, Ordering},
         Arc,
     },
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 const SERVER_ADDRESS: &str = "0.0.0.0";
@@ -26,6 +26,14 @@ fn process_message(buf: &[u8], db: &mut Database) -> Result<Vec<u8>, String> {
             },
             Command::Put => {
                 db.put(&msg.key, msg.value);
+                Message {
+                    command: Command::Ok,
+                    key: msg.key,
+                    value: Vec::new(),
+                }
+            }
+            Command::Keep => {
+                db.keep(&msg.key);
                 Message {
                     command: Command::Ok,
                     key: msg.key,
@@ -58,7 +66,15 @@ fn main() -> std::io::Result<()> {
     .expect("error setting Ctrl-C handler");
 
     println!("starting server on {}:{}", SERVER_ADDRESS, SERVER_PORT);
+    let mut last_purge = Instant::now();
+
     while run_loop.load(Ordering::SeqCst) {
+        let now = Instant::now();
+        if now.duration_since(last_purge).as_secs() > 24 * 60 * 60 {
+            db.age_and_purge();
+            last_purge = now;
+        }
+
         match socket.recv_from(&mut buf) {
             Ok((msg_length, src)) => {
                 if let Ok(response) = process_message(&buf[..msg_length], &mut db) {
